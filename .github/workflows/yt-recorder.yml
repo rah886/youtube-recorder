@@ -1,0 +1,35 @@
+name: YouTube Live Recorder
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'  # проверка каждые 10 минут
+  workflow_dispatch:        # можно запускать вручную
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: |
+        pip install yt-dlp requests
+
+    - name: Install rclone
+      run: |
+        curl https://rclone.org/install.sh | sudo bash
+
+    - name: Configure rclone
+      run: |
+        mkdir -p ~/.config/rclone
+        echo "${{ secrets.RCLONE_CONF }}" > ~/.config/rclone/rclone.conf
+
+    - name: Run script
+      run: python yt-recorder.py
