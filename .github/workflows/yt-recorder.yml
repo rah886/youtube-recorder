@@ -1,8 +1,6 @@
 name: YouTube Live Recorder
 
 on:
-  schedule:
-    - cron: '*/10 * * * *'  # проверка каждые 10 минут
   workflow_dispatch:        # можно запускать вручную
 
 jobs:
