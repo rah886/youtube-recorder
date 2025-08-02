@@ -1,40 +1,40 @@
 name: YouTube Live Recorder
 
+# run every 5 minutes around the clock
 on:
-  workflow_dispatch:        # можно запускать вручную
   schedule:
-    - cron: '55 14 * * 3'    # Среда 17:55 по Киеву (14:55 UTC)
-    - cron: '55 5 * * 6'     # Суббота 08:55 по Киеву (05:55 UTC)
-    
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
 jobs:
   record:
     runs-on: ubuntu-latest
+    # kill any earlier job if a new run starts
+    concurrency:
+      group: live-recorder
+      cancel-in-progress: true
 
     steps:
-    - name: Checkout repo
-      uses: actions/checkout@v3
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.x'
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
 
-    - name: Install dependencies
-      run: |
-        pip install yt-dlp requests
+      - name: Install system packages
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y ffmpeg rclone
+          pip install yt-dlp
 
-    - name: Install rclone
-      run: |
-        curl https://rclone.org/install.sh | sudo bash
+      - name: Configure rclone
+        run: |
+          mkdir -p ~/.config/rclone
+          echo "${{ secrets.RCLONE_CONF }}" > ~/.config/rclone/rclone.conf
 
-    - name: Configure rclone
-      run: |
-        mkdir -p ~/.config/rclone
-        echo "${{ secrets.RCLONE_CONF }}" > ~/.config/rclone/rclone.conf
-
-    - name: Run script
-      env:
-        YOUTUBE_URL: ${{ secrets.YOUTUBE_URL }}
-        MAX_WAIT_TIME: ${{ secrets.MAX_WAIT_TIME }}
-        MAX_DURATION: ${{ secrets.MAX_DURATION }}
-      run: python yt-recorder.py
+      - name: Run recorder
+        env:
+          CHANNEL_ID: "UCFn8ooPuQL2QaKTAl0jjIcQ"
+        run: python yt-recorder.py
