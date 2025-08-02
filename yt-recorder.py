@@ -5,8 +5,8 @@ import time
 import datetime
 import subprocess
 
-CHANNEL_ID  = os.environ["CHANNEL_ID"]      # <- берётся из секрета
-RCLONE_DEST = "gdrive:/YouTubeRecords"      # папка в Google Drive
+CHANNEL_ID  = os.environ["CHANNEL_ID"]  # из секрета GitHub
+RCLONE_DEST = "gdrive:"                 # корень Google Drive – никаких папок не требуется
 
 def is_live():
     """Возвращает прямой .m3u8-URL, если канал в прямом эфире, иначе None."""
@@ -36,7 +36,7 @@ def record(url, output):
     subprocess.run(cmd, check=True)
 
 def upload(file_path):
-    """Отправляет файл в Google Drive через rclone."""
+    """Отправляет файл в корень Google Drive через rclone."""
     subprocess.run(["rclone", "copy", file_path, RCLONE_DEST], check=True)
     print(f"Uploaded: {file_path}")
 
