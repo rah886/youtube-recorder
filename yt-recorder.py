@@ -5,20 +5,17 @@ import time
 import datetime
 import subprocess
 
-CHANNEL_ID = os.environ["CHANNEL_ID"]
-# remote:path inside Google Drive
-RCLONE_DEST = "gdrive:/YouTubeRecords"
+CHANNEL_ID  = os.environ["CHANNEL_ID"]      # <- берётся из секрета
+RCLONE_DEST = "gdrive:/YouTubeRecords"      # папка в Google Drive
 
 def is_live():
-    """Return the .m3u8 URL if the channel is currently live, else None."""
+    """Возвращает прямой .m3u8-URL, если канал в прямом эфире, иначе None."""
     cmd = [
         "yt-dlp",
         "--quiet",
         "--skip-download",
-        "--print",
-        "%(url)s",
-        "--match-filter",
-        "is_live",
+        "--print", "%(url)s",
+        "--match-filter", "is_live",
         f"https://www.youtube.com/channel/{CHANNEL_ID}/live"
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
@@ -26,24 +23,20 @@ def is_live():
     return url if url else None
 
 def record(url, output):
-    """Record the HLS stream until it ends."""
+    """Записывает стрим ffmpeg'ом до его завершения."""
     cmd = [
         "ffmpeg",
         "-hide_banner",
-        "-loglevel",
-        "error",
-        "-i",
-        url,
-        "-c",
-        "copy",
-        "-f",
-        "mp4",
-        output,
+        "-loglevel", "error",
+        "-i", url,
+        "-c", "copy",
+        "-f", "mp4",
+        output
     ]
     subprocess.run(cmd, check=True)
 
 def upload(file_path):
-    """Upload to Google Drive via rclone."""
+    """Отправляет файл в Google Drive через rclone."""
     subprocess.run(["rclone", "copy", file_path, RCLONE_DEST], check=True)
     print(f"Uploaded: {file_path}")
 
@@ -53,7 +46,7 @@ def main():
         stream_url = is_live()
         if stream_url:
             break
-        time.sleep(60)  # wait 1 min between checks
+        time.sleep(60)  # проверка каждую минуту
 
     ts = datetime.datetime.utcnow().strftime("%Y-%m-%d_%H-%M-%S")
     filename = f"{CHANNEL_ID}_{ts}.mp4"
