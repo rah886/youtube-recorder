@@ -1,0 +1,27 @@
+name: Record any live 24/7
+on:
+  schedule:
+    - cron: '*/1 * * * *'   # каждую минуту
+  workflow_dispatch:
+
+concurrency:
+  group: watchdog
+  cancel-in-progress: true
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with: { python-version: '3.x' }
+      - run: |
+          sudo apt-get update -y && sudo apt-get install -y ffmpeg rclone
+          pip install yt-dlp
+      - run: |
+          mkdir -p ~/.config/rclone
+          echo "${{ secrets.RCLONE_CONF }}" > ~/.config/rclone/rclone.conf
+      - run: python yt-recorder.py
+        env:
+          CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
