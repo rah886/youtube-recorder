@@ -1,65 +1,51 @@
 #!/usr/bin/env python3
-import os
-import sys
-import time
-import datetime
-import subprocess
+import os, time, datetime, subprocess, sys
 
-CHANNEL_ID  = os.environ["CHANNEL_ID"]  # из секрета GitHub
-RCLONE_DEST = "gdrive:"                 # корень Google Drive – никаких папок не требуется
+CHANNEL_ID  = os.environ["CHANNEL_ID"]
+RCLONE_DEST = "gdrive:"
 
 def is_live():
-    """Возвращает прямой .m3u8-URL, если канал в прямом эфире, иначе None."""
     cmd = [
-        "yt-dlp",
-        "--quiet",
-        "--skip-download",
-        "--print", "%(url)s",
+        "yt-dlp", "--quiet", "--skip-download", "--print", "%(url)s",
         "--match-filter", "is_live",
         f"https://www.youtube.com/channel/{CHANNEL_ID}/live"
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    url = result.stdout.strip()
-    return url if url else None
+    try:
+        url = subprocess.check_output(cmd, text=True).strip()
+        return url if url and url != "NA" else None
+    except subprocess.CalledProcessError:
+        return None
 
-def record(url, output):
-    """Записывает стрим ffmpeg'ом до его завершения."""
-    cmd = [
-        "ffmpeg",
-        "-hide_banner",
-        "-loglevel", "error",
-        "-i", url,
-        "-c", "copy",
-        "-f", "mp4",
-        output
-    ]
-    subprocess.run(cmd, check=True)
+def record(url, outfile):
+    subprocess.run([
+        "ffmpeg", "-hide_banner", "-loglevel", "error",
+        "-i", url, "-c", "copy", "-f", "mp4", outfile
+    ], check=True)
 
-def upload(file_path):
-    """Отправляет файл в корень Google Drive через rclone."""
-    subprocess.run(["rclone", "copy", file_path, RCLONE_DEST], check=True)
-    print(f"Uploaded: {file_path}")
+def upload(file):
+    subprocess.run(["rclone", "copy", file, RCLONE_DEST], check=True)
 
 def main():
-    print("Looking for live stream …")
-    while True:
-        stream_url = is_live()
-        if stream_url:
+    print("Waiting for live stream ...")
+    start = time.time()
+    while time.time() - start < 6 * 3600:
+        url = is_live()
+        if url:
             break
-        time.sleep(60)  # проверка каждую минуту
+        time.sleep(30)          # проверка каждые 30 с
+
+    if not url:
+        print("No live stream within 6 hours.")
+        return
 
     ts = datetime.datetime.utcnow().strftime("%Y-%m-%d_%H-%M-%S")
     filename = f"{CHANNEL_ID}_{ts}.mp4"
-
-    print(f"Recording started → {filename}")
-    record(stream_url, filename)
-    print("Recording finished")
-
+    print(f"Recording → {filename}")
+    record(url, filename)
+    print("Recording finished, uploading ...")
     upload(filename)
 
 if __name__ == "__main__":
-    try:
-        main()
+    try: main()
     except Exception as e:
-        print(e, file=sys.stderr)
-        sys.exit(1)
+        print(e, file=sys.stderr); sys.exit(1)
