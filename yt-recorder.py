@@ -5,17 +5,21 @@ CHANNEL_ID  = os.environ["CHANNEL_ID"]
 RCLONE_DEST = "gdrive:"
 
 def is_live():
-    """Вернёт прямой .m3u8-URL, если канал сейчас live."""
+    # используем mweb-клиент, который пока не требует авторизации
     cmd = [
         "yt-dlp",
         "--quiet",
         "--skip-download",
         "--print", "%(url)s",
         "--match-filter", "is_live",
-        f"https://www.youtube.com/channel/{CHANNEL_ID}/live"
+        f"https://www.youtube.com/channel/{CHANNEL_ID}/live",
+        "--extractor-args", "youtube:player_client=mweb"
     ]
-    url = subprocess.check_output(cmd, text=True).strip()
-    return url if url and url != "NA" else None
+    try:
+        url = subprocess.check_output(cmd, text=True).strip()
+        return url if url and url != "NA" else None
+    except subprocess.CalledProcessError:
+        return None
 
 def record(url, out_file):
     subprocess.run([
@@ -34,7 +38,7 @@ def upload(file):
 def main():
     print("Waiting for live stream ...")
     start = time.time()
-    while time.time() - start < 6 * 3600:   # 6 часов максимум
+    while time.time() - start < 6 * 3600:
         url = is_live()
         if url:
             break
