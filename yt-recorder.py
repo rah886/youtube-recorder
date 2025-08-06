@@ -5,21 +5,27 @@ CHANNEL_ID  = os.environ["CHANNEL_ID"]
 RCLONE_DEST = "gdrive:"
 
 def is_live():
+    """Вернёт прямой .m3u8-URL, если канал сейчас live."""
     cmd = [
-        "yt-dlp", "--quiet", "--skip-download", "--print", "%(url)s",
+        "yt-dlp",
+        "--quiet",
+        "--skip-download",
+        "--print", "%(url)s",
         "--match-filter", "is_live",
         f"https://www.youtube.com/channel/{CHANNEL_ID}/live"
     ]
-    try:
-        url = subprocess.check_output(cmd, text=True).strip()
-        return url if url and url != "NA" else None
-    except subprocess.CalledProcessError:
-        return None
+    url = subprocess.check_output(cmd, text=True).strip()
+    return url if url and url != "NA" else None
 
-def record(url, outfile):
+def record(url, out_file):
     subprocess.run([
-        "ffmpeg", "-hide_banner", "-loglevel", "error",
-        "-i", url, "-c", "copy", "-f", "mp4", outfile
+        "ffmpeg",
+        "-hide_banner",
+        "-loglevel", "error",
+        "-i", url,
+        "-c", "copy",
+        "-f", "mp4",
+        out_file
     ], check=True)
 
 def upload(file):
@@ -28,11 +34,11 @@ def upload(file):
 def main():
     print("Waiting for live stream ...")
     start = time.time()
-    while time.time() - start < 6 * 3600:
+    while time.time() - start < 6 * 3600:   # 6 часов максимум
         url = is_live()
         if url:
             break
-        time.sleep(30)          # проверка каждые 30 с
+        time.sleep(30)
 
     if not url:
         print("No live stream within 6 hours.")
@@ -46,6 +52,8 @@ def main():
     upload(filename)
 
 if __name__ == "__main__":
-    try: main()
+    try:
+        main()
     except Exception as e:
-        print(e, file=sys.stderr); sys.exit(1)
+        print(e, file=sys.stderr)
+        sys.exit(1)
